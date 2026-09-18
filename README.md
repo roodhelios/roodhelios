@@ -180,7 +180,7 @@ Correlates explicitly scoped asset observations from multiple sources into stabl
 <div align="center">
 
 <img height="165" src="https://github-stats-extended.vercel.app/api?username=roodhelios&show_icons=true&hide_border=true&theme=tokyonight&bg_color=0D1117&title_color=4EA8DE&icon_color=4EA8DE&text_color=C9D1D9" alt="GitHub stats" />
-<img height="165" src="https://github-stats-extended.vercel.app/api/top-langs/?username=roodhelios&layout=compact&hide_border=true&theme=tokyonight&bg_color=0D1117&title_color=4EA8DE&text_color=C9D1D9" alt="Top languages" />
+<img height="165" src="https://github-stats-extended.vercel.app/api/top-langs/?username=roodhelios&layout=compact&hide=html,css&hide_border=true&theme=tokyonight&bg_color=0D1117&title_color=4EA8DE&text_color=C9D1D9" alt="Top languages" />
 
 </div>
 
