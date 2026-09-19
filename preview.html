@@ -1,0 +1,85 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>profile assets — local preview</title>
+<style>
+  :root { color-scheme: dark }
+  body { background:#0d1117; color:#c9d1d9;
+         font:15px/1.6 ui-sans-serif,-apple-system,Segoe UI,system-ui,sans-serif;
+         margin:0; padding:40px 44px 80px; }
+  h1 { font-size:20px; color:#4ea8de; letter-spacing:.02em; margin:0 0 6px }
+  .sub { color:#8291a8; font-size:13px; margin:0 0 8px }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:#8b949e;
+       border-bottom:1px solid #21262d; padding-bottom:9px; margin:44px 0 20px;
+       display:flex; align-items:center; gap:14px }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start }
+  .card { background:#0d1117; border:1px solid #21262d; border-radius:10px; padding:18px }
+  .card.light { background:#fff; border-color:#d0d7de }
+  .tag { font:11px ui-monospace,SFMono-Regular,Consolas,monospace; color:#8291a8;
+         display:block; margin-bottom:10px }
+  .card.light .tag { color:#57606a }
+  img { display:block; max-width:100% }
+  button { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px;
+           padding:5px 12px; font:inherit; font-size:12px; cursor:pointer;
+           text-transform:none; letter-spacing:0 }
+  button:hover { background:#30363d; border-color:#4ea8de; color:#4ea8de }
+  .missing { color:#8291a8; font-style:italic; font-size:13px; margin:0 }
+  code { font:12px ui-monospace,Consolas,monospace; color:#4ea8de }
+</style>
+
+<h1>profile assets — local preview</h1>
+<p class="sub">Every generated SVG on both a dark and a light card, the way GitHub renders them.
+Animations run once per image load, so use <b>replay</b> to watch them again.</p>
+<p class="sub">Regenerate with <code>python scripts/radar.py …</code>,
+<code>scripts/cards.py</code>, <code>scripts/banner/generate.py</code>, then reload.</p>
+
+<h2>banner <button data-replay="banner">replay</button></h2>
+<div class="row">
+  <div class="card"><span class="tag">banner-dark.svg</span>
+    <img class="banner" data-base="assets/banner-dark.svg" src="assets/banner-dark.svg" width="900"></div>
+  <div class="card light"><span class="tag">banner-light.svg</span>
+    <img class="banner" data-base="assets/banner-light.svg" src="assets/banner-light.svg" width="900"></div>
+</div>
+
+<h2>skill radar <button data-replay="radar">replay</button></h2>
+<div class="row">
+  <div class="card"><span class="tag">radar-dark.svg</span>
+    <img class="radar" data-base="assets/radar-dark.svg" src="assets/radar-dark.svg" width="430"></div>
+  <div class="card light"><span class="tag">radar-light.svg</span>
+    <img class="radar" data-base="assets/radar-light.svg" src="assets/radar-light.svg" width="430"></div>
+</div>
+
+<h2>language radar <button data-replay="langs">replay</button></h2>
+<div class="row">
+  <div class="card"><span class="tag">radar-langs-dark.svg</span>
+    <img class="langs" data-base="assets/radar-langs-dark.svg" src="assets/radar-langs-dark.svg" width="430"></div>
+  <div class="card light"><span class="tag">radar-langs-light.svg</span>
+    <img class="langs" data-base="assets/radar-langs-light.svg" src="assets/radar-langs-light.svg" width="430"></div>
+</div>
+
+<h2>stats card <button data-replay="stats">replay</button></h2>
+<div class="row">
+  <div class="card"><span class="tag">card-stats-dark.svg</span>
+    <img class="stats" data-base="assets/card-stats-dark.svg" src="assets/card-stats-dark.svg" width="470"></div>
+  <div class="card light"><span class="tag">card-stats-light.svg</span>
+    <img class="stats" data-base="assets/card-stats-light.svg" src="assets/card-stats-light.svg" width="470"></div>
+</div>
+
+<script>
+  // A fresh query string forces a reload, which restarts the SMIL timeline.
+  for (const b of document.querySelectorAll('button[data-replay]')) {
+    b.onclick = () => {
+      for (const img of document.querySelectorAll('img.' + b.dataset.replay)) {
+        img.src = img.dataset.base + '?' + Date.now();
+      }
+    };
+  }
+  // Show a note instead of a broken icon when an asset has not been generated.
+  for (const img of document.querySelectorAll('img[data-base]')) {
+    img.onerror = () => {
+      const p = document.createElement('p');
+      p.className = 'missing';
+      p.textContent = 'not generated yet — ' + img.dataset.base;
+      img.replaceWith(p);
+    };
+  }
+</script>

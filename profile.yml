@@ -1,0 +1,59 @@
+# Regenerates the radar charts and the stats card, then commits them.
+#
+# The banner is NOT regenerated here: it needs your portrait, which stays on
+# your machine and out of this repo. Run scripts/banner/generate.py locally
+# when you want to change it.
+
+name: Update profile assets
+
+on:
+  schedule:
+    - cron: "30 3 * * *"   # 03:30 UTC daily
+  workflow_dispatch:
+  push:
+    paths:
+      - "assets/skills.json"
+      - "assets/langmix.json"
+      - "scripts/radar.py"
+      - "scripts/cards.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-assets
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Radar charts
+        run: |
+          python scripts/radar.py assets/skills.json  --out assets --name radar
+          python scripts/radar.py assets/langmix.json --out assets --name radar-langs
+
+      - name: Stats card
+        env:
+          # GITHUB_TOKEN covers public stats. For private contribution counts,
+          # add a PAT as a repo secret and swap it in here, then pass
+          # --include-private below.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/cards.py --login roodhelios --out assets
+
+      - name: Verify before committing
+        run: python scripts/verify.py
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/*.svg
+          git diff --staged --quiet || git commit -m "Update profile assets"
+          git push

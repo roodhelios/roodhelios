@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+# your source photo stays local; only the generated SVGs get committed
+portrait.png
+*.jpg
+*.jpeg
+!assets/*.svg

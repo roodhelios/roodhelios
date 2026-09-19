@@ -1,0 +1,11 @@
+{
+  "title": "Working Language Mix",
+  "axes": [
+    {"label": "Python",     "value": 92},
+    {"label": "Bash",       "value": 80},
+    {"label": "SQL",        "value": 68},
+    {"label": "Rego",       "value": 64},
+    {"label": "C",          "value": 55},
+    {"label": "JavaScript", "value": 58}
+  ]
+}

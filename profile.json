@@ -1,0 +1,25 @@
+{
+  "title": "profile.sh --live",
+  "handle": "@roodhelios",
+  "alt": "Aryan Singh - Security Engineer",
+  "visual_label": "VISUAL.MAP",
+  "info_label": "SYSTEM.INFO",
+  "rows": [
+    ["Subject",        "Aryan Singh"],
+    ["Role",           "Security Engineer"],
+    ["Based",          "Boston, MA"],
+    ["Education",      "M.S. Cybersecurity . Northeastern"],
+    ["Status",         "Seeking Summer 2027 co-op"],
+    ["Focus",          "Zero Trust . Cloud Security . Malware RE"],
+    ["Core.Lang",      "Python . Bash . C . SQL"],
+    ["Core.Cloud",     "AWS . Docker . Kubernetes . Terraform"],
+    ["Core.Policy",    "OPA/Rego . IAM . Ed25519 . JWT"],
+    ["Core.Detection", "Splunk . Suricata . Zeek . Wireshark"],
+    ["Core.Reversing", "IDA Pro . Ghidra . capa . FLARE-VM"],
+    ["Core.Offense",   "Kali . Burp Suite . OWASP ZAP"],
+    ["Grid.GitHub",    "roodhelios"],
+    ["Grid.LinkedIn",  "/in/aryan-singh-rootkid"]
+  ],
+  "status_left": "ALL SYSTEMS NOMINAL",
+  "status_right": "UTC-4 . BOSTON NODE"
+}

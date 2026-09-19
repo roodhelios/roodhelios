@@ -1,0 +1,12 @@
+{
+  "title": "Security Engineering Radar",
+  "axes": [
+    {"label": "Zero Trust / IAM",      "value": 88},
+    {"label": "Network Security",      "value": 85},
+    {"label": "Cloud Security",        "value": 82},
+    {"label": "Security Automation",   "value": 82},
+    {"label": "Detection Engineering", "value": 79},
+    {"label": "AppSec / Pentesting",   "value": 78},
+    {"label": "Malware Analysis",      "value": 76}
+  ]
+}
