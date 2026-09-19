@@ -79,6 +79,18 @@ def check_banner_visibility(path: Path) -> list[str]:
         if rect.find(NS + "animate") is not None:
             bad.append(f"{clip.get('id', 'clipPath')} animates geometry; GitHub may hide it")
 
+    scenes = [g for g in root.iter(NS + "g") if (g.get("clip-path") or "").startswith("url(#rv")]
+    if len(scenes) != len(clips):
+        bad.append(f"{len(scenes)} scene groups found for {len(clips)} clips")
+    initial = [g for g in scenes if float(g.get("opacity", "1")) > 0]
+    if len(initial) != 1:
+        bad.append(f"{len(initial)} scenes are initially visible; expected exactly one")
+    for scene in scenes:
+        animations = [a for a in scene.findall(NS + "animate")
+                      if a.get("attributeName") == "opacity"]
+        if not animations:
+            bad.append(f"{scene.get('clip-path')} has no frame opacity animation")
+
     dot_moves = 0
     for el in root.iter(NS + "path"):
         if el.get("stroke-linecap") == "round":
