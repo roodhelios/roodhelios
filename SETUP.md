@@ -17,6 +17,7 @@ assets/
   *.svg                   generated, committed
 scripts/
   radar.py                JSON -> radar SVG          (stdlib only)
+  morph.py                images/symbols -> particle morph SVG
   cards.py                GitHub GraphQL -> stats SVG (stdlib only)
   verify.py               catches overflow + geometry bugs
   banner/
@@ -65,6 +66,31 @@ the alpha channel is used as the mask, so no tracing is needed.
 
 Tuning flags: `--points` for density, `--gamma` (above 1 thins mid-tones, below
 1 fills them in), `--invert` for a dark subject on a light background.
+
+## The particle morph
+
+```bash
+python scripts/morph.py hood.png emblem.png portrait.png \
+    --out assets --points 2600 --dur 21 --edges 1 \
+    --floors 0.30 0.10 0.45 --labels ANONYMITY CONTROL "ARYAN SINGH"
+```
+
+Sparse particles can only draw *thin* structure -- outlines, edges, highlights.
+A solid filled silhouette samples to uniform noise no matter how many points
+you throw at it. So each shape gets its own treatment:
+
+- `--edges N` traces shape N's outlines instead of filling it. The emblem needs
+  this; without it, it is a blob.
+- `--floors` sets one brightness cutoff per shape. Raise it if a shape looks
+  like mush, lower it if it looks too sparse.
+- Built-in stroke symbols need no tuning at all: `:shield` `:terminal` `:lock`
+  `:radar`. Pass them in place of a filename.
+
+Below roughly 2,500 particles the emblem and the face stop resolving. Above
+that, file size climbs fast. Transitions are linear to keep bytes down; add
+`--spline` for easing at about +230 KB.
+
+Like the banner, this reads local images and is not regenerated in CI.
 
 ## Cache busting
 
