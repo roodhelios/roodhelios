@@ -400,7 +400,7 @@ def main() -> int:
 
     a.out.mkdir(parents=True, exist_ok=True)
     for theme in ("dark", "light"):
-        path = a.out / f"banner-{theme}.svg"
+        path = a.out / f"banner-{theme}.v2.svg"
         path.write_text(build(cfg, frames, theme), encoding="utf-8")
         print(f"  {path}  ({path.stat().st_size/1024:.0f} KB)")
     print(f"\n{len(frames)} frames, {PER_FRAME*len(frames):.0f}s loop.")

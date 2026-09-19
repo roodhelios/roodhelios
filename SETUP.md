@@ -94,9 +94,9 @@ Like the banner, this reads local images and is not regenerated in CI.
 
 ## Cache busting
 
-GitHub caches README images hard. After regenerating, bump the `?v=N` on the
-affected `<picture>` paths in `README.md`, or you will keep seeing the old
-version and think nothing happened.
+GitHub caches README images hard. After regenerating, bump the banner filename suffix (for example, `.v2.svg` to
+`.v3.svg`) in the generator, README, preview, and verifier. GitHub's image proxy
+can keep serving an old SVG even when only a query string changes.
 
 ## The stats card and tokens
 

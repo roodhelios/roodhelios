@@ -132,8 +132,8 @@ def check_radar(svg: Path, cfg: Path) -> list[str]:
 def main() -> int:
     fails = 0
     jobs = [
-        ("assets/banner-dark.svg", BANNER_PANELS, None),
-        ("assets/banner-light.svg", BANNER_PANELS, None),
+        ("assets/banner-dark.v2.svg", BANNER_PANELS, None),
+        ("assets/banner-light.v2.svg", BANNER_PANELS, None),
         ("assets/radar-dark.svg", None, "assets/skills.json"),
         ("assets/radar-light.svg", None, "assets/skills.json"),
         ("assets/radar-langs-dark.svg", None, "assets/langmix.json"),
