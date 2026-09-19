@@ -25,7 +25,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 
 # --- layout ---------------------------------------------------------------
 W, H = 1100, 560          # viewBox
@@ -150,29 +150,48 @@ def text(x, y, s, fill, size=ROW_SIZE, anchor="start", weight="400", extra=""):
             f'text-anchor="{anchor}"{extra}>{escape(s)}</text>')
 
 
-CYCLE = 9.0          # seconds for one full scan loop
-REVEAL = 0.30        # fraction of the cycle spent drawing the portrait in
-HOLD = 0.78          # fraction at which the wipe-out begins
+PER_FRAME = 9.0       # seconds each frame is on screen
+REVEAL = 3.0          # seconds to scan a frame in
+FADE = 1.0            # seconds to dissolve out
 
 
-def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
+def frame_times(i: int, n: int):
+    """Clip, opacity and scan keyframes for frame i of n, as cycle fractions."""
+    cycle = PER_FRAME * n
+    t0 = i * PER_FRAME / cycle
+    tr = (i * PER_FRAME + REVEAL) / cycle
+    tf = ((i + 1) * PER_FRAME - FADE) / cycle
+    te = (i + 1) * PER_FRAME / cycle
+    return cycle, t0, tr, tf, min(te, 1.0)
+
+
+def kt(vals) -> str:
+    return ";".join(f"{v:g}" for v in vals)
+
+
+def build(cfg: dict, frames, theme: str) -> str:
+    """frames: list of (mask, dot_count, label) -- each a full-resolution stipple."""
     c = THEMES[theme]
+    n = len(frames)
+    cycle = PER_FRAME * n
+    ix, iy = LEFT_X + 20, BODY_Y + 46
     o = []
+
     o.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
              f'width="{W}" height="{H}" role="img" '
              f'aria-label="{escape(cfg.get("alt", "profile banner"))}">')
 
-    ix, iy = LEFT_X + 20, BODY_Y + 46
-    kt = f"0;{REVEAL};{HOLD};1"
-
-    # defs: the scan clip and the glow band that rides its edge
     o.append("<defs>")
-    o.append(f'<clipPath id="rv"><rect x="{ix-2}" y="{iy}" width="{IMG_W+4}" height="0">'
-             f'<animate attributeName="height" values="0;{IMG_H};{IMG_H};0" '
-             f'keyTimes="{kt}" dur="{CYCLE}s" repeatCount="indefinite"/>'
-             f'<animate attributeName="y" values="{iy};{iy};{iy};{iy+IMG_H}" '
-             f'keyTimes="{kt}" dur="{CYCLE}s" repeatCount="indefinite"/>'
-             f'</rect></clipPath>')
+    for i in range(n):
+        _, t0, tr, tf, te = frame_times(i, n)
+        if i == 0:
+            hv, hk = f"0;{IMG_H};{IMG_H}", kt([0, tr, 1])
+        else:
+            hv, hk = f"0;0;{IMG_H};{IMG_H}", kt([0, t0, tr, 1])
+        o.append(f'<clipPath id="rv{i}"><rect x="{ix-2}" y="{iy}" '
+                 f'width="{IMG_W+4}" height="0">'
+                 f'<animate attributeName="height" values="{hv}" keyTimes="{hk}" '
+                 f'dur="{cycle}s" repeatCount="indefinite"/></rect></clipPath>')
     o.append(f'<linearGradient id="scan" x1="0" y1="0" x2="0" y2="1">'
              f'<stop offset="0" stop-color="{c["accent"]}" stop-opacity="0"/>'
              f'<stop offset="0.5" stop-color="{c["accent"]}" stop-opacity="0.75"/>'
@@ -180,7 +199,6 @@ def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
              f'</linearGradient>')
     o.append("</defs>")
 
-    # frame
     o.append(f'<rect x="{PAD}" y="{PAD}" width="{W-2*PAD}" height="{H-2*PAD}" rx="10" '
              f'fill="{c["bg"]}" stroke="{c["border"]}"/>')
     o.append(f'<path d="M{PAD} {PAD+18}a10 10 0 0 1 10-10h{W-2*PAD-20}a10 10 0 0 1 10 10'
@@ -191,13 +209,12 @@ def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
         o.append(f'<circle cx="{32+i*20}" cy="{PAD+BAR_H/2}" r="6" fill="{col}"/>')
     title = cfg.get("title", "profile.sh --live")
     o.append(text(W/2, PAD + BAR_H/2 + 4.5, title, c["label"], 13, "middle"))
-    cx = W/2 + len(title) * 13 * CW / 2 + 5
-    o.append(f'<rect x="{cx:.1f}" y="{PAD+BAR_H/2-8:.1f}" width="7" height="13" '
+    cxp = W/2 + len(title) * 13 * CW / 2 + 5
+    o.append(f'<rect x="{cxp:.1f}" y="{PAD+BAR_H/2-8:.1f}" width="7" height="13" '
              f'fill="{c["accent"]}"><animate attributeName="opacity" '
              f'values="1;1;0;0" keyTimes="0;0.5;0.5;1" dur="1.1s" '
              f'repeatCount="indefinite"/></rect>')
 
-    # left panel
     o.append(f'<rect x="{LEFT_X}" y="{BODY_Y}" width="{LEFT_W}" height="{BODY_H}" rx="6" '
              f'fill="{c["panel"]}" stroke="{c["border"]}"/>')
     o.append(f'<line x1="{LEFT_X}" y1="{BODY_Y+30}" x2="{LEFT_X+LEFT_W}" y2="{BODY_Y+30}" '
@@ -212,28 +229,52 @@ def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
         o.append(f'<path d="M{ix+dx} {iy+dy+sy*14}v{-sy*14}h{sx*14}" fill="none" '
                  f'stroke="{c["dim"]}" stroke-width="1.5"/>')
 
-    # portrait, revealed by the scan clip, each third shimmering out of phase
-    o.append('<g clip-path="url(#rv)">')
-    for i, d in enumerate(dots_paths(mask, ix, iy, 1.0)):
-        o.append(f'<path d="{d}" stroke="{c["dot"]}" stroke-width="1.15" '
-                 f'stroke-linecap="round" fill="none">'
-                 f'<animate attributeName="opacity" values="1;0.68;1" '
-                 f'dur="{3.1 + i * 0.4:.1f}s" begin="{i * 0.9:.1f}s" '
-                 f'repeatCount="indefinite"/></path>')
-    o.append("</g>")
+    # one full-resolution stipple per frame, each scanned in then dissolved
+    for i, (mask, _count, _lab) in enumerate(frames):
+        _, t0, tr, tf, te = frame_times(i, n)
+        if i == 0:
+            ov, ok = "1;1;0;0", kt([0, tf, te, 1])
+        elif te >= 1.0:
+            ov, ok = "0;0;1;1;0", kt([0, t0 - 1e-4, t0, tf, 1])
+        else:
+            ov, ok = "0;0;1;1;0;0", kt([0, t0 - 1e-4, t0, tf, te, 1])
+        o.append(f'<g clip-path="url(#rv{i})" opacity="{1 if i == 0 else 0}">'
+                 f'<animate attributeName="opacity" values="{ov}" keyTimes="{ok}" '
+                 f'dur="{cycle}s" repeatCount="indefinite"/>')
+        for j, d in enumerate(dots_paths(mask, ix, iy, 1.0)):
+            o.append(f'<path d="{d}" stroke="{c["dot"]}" stroke-width="1.15" '
+                     f'stroke-linecap="round" fill="none">'
+                     f'<animate attributeName="opacity" values="1;0.68;1" '
+                     f'dur="{3.1 + j * 0.4:.1f}s" begin="{j * 0.9:.1f}s" '
+                     f'repeatCount="indefinite"/></path>')
+        o.append("</g>")
 
-    # the glow band riding the reveal edge
-    o.append(f'<rect x="{ix-2}" y="{iy}" width="{IMG_W+4}" height="26" fill="url(#scan)">'
-             f'<animate attributeName="y" values="{iy-26};{iy+IMG_H};{iy+IMG_H};{iy+IMG_H}" '
-             f'keyTimes="{kt}" dur="{CYCLE}s" repeatCount="indefinite"/>'
-             f'<animate attributeName="opacity" values="1;1;0;0" '
-             f'keyTimes="0;{REVEAL};{REVEAL+0.001};1" dur="{CYCLE}s" '
-             f'repeatCount="indefinite"/></rect>')
+    # the glow band rides each reveal edge in turn
+    for i in range(n):
+        _, t0, tr, tf, te = frame_times(i, n)
+        yv = kt([0, t0, tr, 1]) if i else kt([0, tr, 1])
+        ys = (f"{iy-26};{iy-26};{iy+IMG_H};{iy+IMG_H}" if i
+              else f"{iy-26};{iy+IMG_H};{iy+IMG_H}")
+        o.append(f'<rect x="{ix-2}" y="{iy}" width="{IMG_W+4}" height="26" '
+                 f'fill="url(#scan)" opacity="0">'
+                 f'<animate attributeName="y" values="{ys}" keyTimes="{yv}" '
+                 f'dur="{cycle}s" repeatCount="indefinite"/>'
+                 f'<animate attributeName="opacity" values="0;0;1;0;0" '
+                 f'keyTimes="{kt([0, max(t0-1e-4,0), t0, tr, 1])}" '
+                 f'dur="{cycle}s" repeatCount="indefinite"/></rect>')
 
-    o.append(text(LEFT_X + 14, BODY_Y + BODY_H - 12,
-                  f"PTS {n_points} / FS/SERPENTINE", c["dim"], 9.5))
+    # footer label swaps with the active frame
+    for i, (_m, count, lab) in enumerate(frames):
+        _, t0, tr, tf, te = frame_times(i, n)
+        txt = f"PTS {count} / {lab}"
+        o.append(f'<g opacity="{1 if i == 0 else 0}">'
+                 f'<animate attributeName="opacity" '
+                 f'values="{"1;1;0;0" if i == 0 else "0;0;1;1;0;0"}" '
+                 f'keyTimes="{kt([0, tf, te, 1]) if i == 0 else kt([0, max(t0-1e-4,0), t0, tf, min(te,1), 1])}" '
+                 f'dur="{cycle}s" repeatCount="indefinite"/>'
+                 + text(LEFT_X + 14, BODY_Y + BODY_H - 12, txt, c["dim"], 9.5)
+                 + "</g>")
 
-    # right panel
     o.append(f'<rect x="{RIGHT_X}" y="{BODY_Y}" width="{RIGHT_W}" height="{BODY_H}" rx="6" '
              f'fill="{c["panel"]}" stroke="{c["border"]}"/>')
     o.append(f'<line x1="{RIGHT_X}" y1="{BODY_Y+30}" x2="{RIGHT_X+RIGHT_W}" y2="{BODY_Y+30}" '
@@ -254,16 +295,16 @@ def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
 
     lx, rx = RIGHT_X + 18, RIGHT_X + RIGHT_W - 18
     y = BODY_Y + 58
-    for i, (label, value) in enumerate(cfg.get("rows", [])):
+    for i, (lab, value) in enumerate(cfg.get("rows", [])):
         beg = 0.35 + i * 0.11
         o.append(f'<g opacity="0">'
                  f'<animate attributeName="opacity" from="0" to="1" dur="0.55s" '
                  f'begin="{beg:.2f}s" fill="freeze"/>'
                  f'<animateTransform attributeName="transform" type="translate" '
                  f'from="14 0" to="0 0" dur="0.55s" begin="{beg:.2f}s" fill="freeze"/>')
-        o.append(text(lx, y, label, c["label"]))
+        o.append(text(lx, y, lab, c["label"]))
         o.append(text(rx, y, value, c["value"], anchor="end", weight="500"))
-        a = lx + len(label) * ROW_SIZE * CW + 8
+        a = lx + len(lab) * ROW_SIZE * CW + 8
         b = rx - len(value) * ROW_SIZE * CW - 8
         if b > a + 6:
             o.append(f'<line x1="{a:.1f}" y1="{y-4:.1f}" x2="{b:.1f}" y2="{y-4:.1f}" '
@@ -284,6 +325,39 @@ def build(cfg: dict, mask: np.ndarray, theme: str, n_points: int) -> str:
     return "".join(o)
 
 
+def frame_mask(spec, invert: bool, edges: bool, floor: float,
+               gamma: float, points: int):
+    """Dither one image to a full-resolution 1-bit stipple for the panel."""
+    img = Image.open(spec)
+    alpha = img.convert("RGBA").split()[-1] if img.mode in ("RGBA", "LA") else None
+    gray = ImageOps.contain(img.convert("L"), (IMG_W, IMG_H), Image.LANCZOS)
+    canvas = Image.new("L", (IMG_W, IMG_H), 0)
+    ox, oy = (IMG_W - gray.width) // 2, (IMG_H - gray.height) // 2
+    canvas.paste(gray, (ox, oy))
+    a = np.asarray(canvas, dtype=np.float64) / 255.0
+    inside = np.zeros_like(a)
+    inside[oy:oy + gray.height, ox:ox + gray.width] = 1.0
+
+    if edges:
+        gy, gx = np.gradient(a)
+        a = np.hypot(gx, gy)
+        a = a / max(a.max(), 1e-9)
+        a = np.asarray(Image.fromarray((a * 255).astype(np.uint8))
+                       .filter(ImageFilter.GaussianBlur(0.6)), dtype=np.float64) / 255.0
+    elif invert:
+        a = 1.0 - a
+    a *= inside
+    if alpha is not None:
+        am = ImageOps.contain(alpha, (IMG_W, IMG_H), Image.LANCZOS)
+        ac = Image.new("L", (IMG_W, IMG_H), 0)
+        ac.paste(am, (ox, oy))
+        a *= np.asarray(ac, dtype=np.float64) / 255.0
+
+    a = np.clip(np.where(a < floor, 0.0, a - floor), 0, 1) ** gamma
+    mask = dither(fit_density(a, points))
+    return mask, int(mask.sum())
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -297,6 +371,13 @@ def main() -> int:
     p.add_argument("--brightness", type=float, default=1.0)
     p.add_argument("--invert", action="store_true",
                    help="use for dark subjects on light backgrounds")
+    p.add_argument("--frames", nargs="*", default=[],
+                   help="extra images the VISUAL.MAP panel cycles through, "
+                        "each rendered at full stipple resolution")
+    p.add_argument("--frame-floors", nargs="*", type=float, default=[])
+    p.add_argument("--frame-invert", nargs="*", type=int, default=[])
+    p.add_argument("--frame-edges", nargs="*", type=int, default=[])
+    p.add_argument("--frame-labels", nargs="*", default=[])
     a = p.parse_args()
 
     if not a.photo.exists():
@@ -306,13 +387,25 @@ def main() -> int:
     dens = fit_density(load_mask(a.photo, a.invert, a.gamma, a.brightness), a.points)
     mask = dither(dens)
     n = int(mask.sum())
+    frames = [(mask, n, "FS/SERPENTINE")]
+    print(f"  {a.photo.name}: {n} dots")
+
+    for i, spec in enumerate(a.frames):
+        fl = a.frame_floors[i] if i < len(a.frame_floors) else 0.0
+        lab = (a.frame_labels[i] if i < len(a.frame_labels) else Path(spec).stem).upper()
+        m, cnt = frame_mask(spec, i in a.frame_invert, i in a.frame_edges,
+                            fl, a.gamma, a.points)
+        frames.append((m, cnt, lab))
+        print(f"  {Path(spec).name}: {cnt} dots"
+              f"{' (edges)' if i in a.frame_edges else ''}"
+              f"{' (inverted)' if i in a.frame_invert else ''}")
 
     a.out.mkdir(parents=True, exist_ok=True)
     for theme in ("dark", "light"):
         path = a.out / f"banner-{theme}.svg"
-        path.write_text(build(cfg, mask, theme, n), encoding="utf-8")
+        path.write_text(build(cfg, frames, theme), encoding="utf-8")
         print(f"  {path}  ({path.stat().st_size/1024:.0f} KB)")
-    print(f"\n{n} dots. Adjust with --points / --gamma / --invert.")
+    print(f"\n{len(frames)} frames, {PER_FRAME*len(frames):.0f}s loop.")
     return 0
 
 
