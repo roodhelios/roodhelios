@@ -39,6 +39,9 @@ jobs:
           python scripts/radar.py assets/skills.json  --out assets --name radar
           python scripts/radar.py assets/langmix.json --out assets --name radar-langs
 
+      # The morph needs the source image, which is gitignored, so it is NOT
+      # regenerated here. Rerun scripts/morph.py locally to change it.
+
       - name: Stats card
         env:
           # GITHUB_TOKEN covers public stats. For private contribution counts,
