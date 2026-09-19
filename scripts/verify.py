@@ -61,6 +61,32 @@ def check_text(path: Path, panels=None) -> list[str]:
     return bad
 
 
+
+def check_banner_visibility(path: Path) -> list[str]:
+    """Catch clip geometry that makes VISUAL.MAP blank on GitHub."""
+    root = ET.parse(path).getroot()
+    bad = []
+    clips = list(root.iter(NS + "clipPath"))
+    if not clips:
+        return ["no VISUAL.MAP clip paths found"]
+    for clip in clips:
+        rect = clip.find(NS + "rect")
+        if rect is None:
+            bad.append(f"{clip.get('id', 'clipPath')} has no rectangle")
+            continue
+        if float(rect.get("height", "0")) <= 0:
+            bad.append(f"{clip.get('id', 'clipPath')} starts with zero height")
+        if rect.find(NS + "animate") is not None:
+            bad.append(f"{clip.get('id', 'clipPath')} animates geometry; GitHub may hide it")
+
+    dot_moves = 0
+    for el in root.iter(NS + "path"):
+        if el.get("stroke-linecap") == "round":
+            dot_moves += (el.get("d") or "").count("M")
+    if dot_moves < 2500:
+        bad.append(f"only {dot_moves} stipple points found; VISUAL.MAP is likely empty")
+    return bad
+
 def check_radar(svg: Path, cfg: Path) -> list[str]:
     axes = json.loads(cfg.read_text())["axes"]
     n = len(axes)
@@ -109,6 +135,8 @@ def main() -> int:
             print(f"{rel}: skipped (not generated)")
             continue
         errs = check_text(p, panels)
+        if "banner-" in rel:
+            errs += check_banner_visibility(p)
         if cfg:
             errs += check_radar(p, ROOT / cfg)
         src = p.read_text()

@@ -182,16 +182,14 @@ def build(cfg: dict, frames, theme: str) -> str:
              f'aria-label="{escape(cfg.get("alt", "profile banner"))}">')
 
     o.append("<defs>")
+    # Keep the image clip geometry static. GitHub's README image proxy does
+    # not reliably animate geometry inside a <clipPath>. A zero-height clip
+    # can therefore hide every stipple while the scan band keeps moving.
+    # Cross-fades still animate below; this positive-height clip guarantees
+    # an immediately visible portrait in GitHub and static previews.
     for i in range(n):
-        _, t0, tr, tf, te = frame_times(i, n)
-        if i == 0:
-            hv, hk = f"0;{IMG_H};{IMG_H}", kt([0, tr, 1])
-        else:
-            hv, hk = f"0;0;{IMG_H};{IMG_H}", kt([0, t0, tr, 1])
         o.append(f'<clipPath id="rv{i}"><rect x="{ix-2}" y="{iy}" '
-                 f'width="{IMG_W+4}" height="0">'
-                 f'<animate attributeName="height" values="{hv}" keyTimes="{hk}" '
-                 f'dur="{cycle}s" repeatCount="indefinite"/></rect></clipPath>')
+                 f'width="{IMG_W+4}" height="{IMG_H}"/></clipPath>')
     o.append(f'<linearGradient id="scan" x1="0" y1="0" x2="0" y2="1">'
              f'<stop offset="0" stop-color="{c["accent"]}" stop-opacity="0"/>'
              f'<stop offset="0.5" stop-color="{c["accent"]}" stop-opacity="0.75"/>'
