@@ -150,19 +150,80 @@ def text(x, y, s, fill, size=ROW_SIZE, anchor="start", weight="400", extra=""):
             f'text-anchor="{anchor}"{extra}>{escape(s)}</text>')
 
 
-PER_FRAME = 9.0       # seconds each frame is on screen
-REVEAL = 3.0          # seconds to scan a frame in
-FADE = 1.0            # seconds to dissolve out
+PER_FRAME = 9.0       # seconds each frame holds
+REVEAL = 2.2          # seconds for one frame to wipe over the last
 
 
-def frame_times(i: int, n: int):
-    """Clip, opacity and scan keyframes for frame i of n, as cycle fractions."""
+BANDS = 26            # horizontal slices used to fake a wipe without clip-path
+
+
+def cyclic_pulse(on: float, off: float, e: float = 0.006):
+    """Opacity keyframes for something switched on over [on, off) in cyclic time.
+
+    Built from plain opacity animation rather than an animated <clipPath>.
+    clip-path on an <img>-embedded SVG is the one thing that did not survive
+    GitHub's profile page, so the wipe is done with banded opacity instead.
+    """
+    on %= 1.0
+    off %= 1.0
+    if on < off:
+        pts = [(0.0, 0), (on, 0), (on + e, 1), (off, 1), (off + e, 0), (1.0, 0)]
+    else:
+        pts = [(0.0, 1), (off, 1), (off + e, 0), (on, 0), (on + e, 1), (1.0, 1)]
+
+    times, vals, last = [], [], -1.0
+    for t, v in pts:
+        t = min(max(t, 0.0), 1.0)
+        if t <= last:
+            t = min(last + 1e-4, 1.0)
+        if times and t <= times[-1]:
+            continue
+        times.append(t)
+        vals.append(v)
+        last = t
+    if times[0] > 0:
+        times.insert(0, 0.0)
+        vals.insert(0, pts[0][1])
+    if times[-1] < 1.0:
+        times.append(1.0)
+        vals.append(vals[-1])
+    return ";".join(str(v) for v in vals), kt(times)
+
+
+def band_paths(mask, ix, iy, bands: int):
+    """Split the stipple into horizontal bands, top to bottom."""
+    ys, xs = np.nonzero(mask)
+    h = mask.shape[0]
+    out = []
+    for b in range(bands):
+        lo, hi = b * h // bands, (b + 1) * h // bands
+        sel = (ys >= lo) & (ys < hi)
+        out.append("".join(f"M{ix + px:.0f} {iy + py:.0f}h.01"
+                           for px, py in zip(xs[sel], ys[sel])))
+    return out
+
+
+def frame_clip(i: int, n: int, iy: float):
+    """A frame is revealed by a top-down wipe and removed by the same wipe
+    running under the next frame, so the panel is never empty."""
     cycle = PER_FRAME * n
-    t0 = i * PER_FRAME / cycle
-    tr = (i * PER_FRAME + REVEAL) / cycle
-    tf = ((i + 1) * PER_FRAME - FADE) / cycle
-    te = (i + 1) * PER_FRAME / cycle
-    return cycle, t0, tr, tf, min(te, 1.0)
+    exit_t = ((i + 1) * PER_FRAME) / cycle          # when the next frame lands
+    exit_s = exit_t - REVEAL / cycle                # when its wipe starts
+    enter_s = (i * PER_FRAME - REVEAL) / cycle
+    enter_t = (i * PER_FRAME) / cycle
+
+    if i == 0:
+        # frame 0 is already whole at t=0 and re-wipes in at the very end,
+        # which makes the loop seamless
+        hv = f"{IMG_H};{IMG_H};0;0;{IMG_H}"
+        hk = kt([0, exit_s, exit_t, 1 - REVEAL / cycle, 1])
+    else:
+        hv = f"0;0;{IMG_H};{IMG_H};0;0"
+        hk = kt([0, enter_s, enter_t, exit_s, exit_t, 1])
+
+    yv = f"{iy};{iy};{iy+IMG_H};{iy};{iy}"
+    yk = kt([0, exit_s, exit_t, min(exit_t + 0.002, 1), 1])
+    return cycle, hv, hk, yv, yk, enter_s, enter_t, exit_s, exit_t
 
 
 def kt(vals) -> str:
@@ -182,14 +243,6 @@ def build(cfg: dict, frames, theme: str) -> str:
              f'aria-label="{escape(cfg.get("alt", "profile banner"))}">')
 
     o.append("<defs>")
-    # Keep the image clip geometry static. GitHub's README image proxy does
-    # not reliably animate geometry inside a <clipPath>. A zero-height clip
-    # can therefore hide every stipple while the scan band keeps moving.
-    # Cross-fades still animate below; this positive-height clip guarantees
-    # an immediately visible portrait in GitHub and static previews.
-    for i in range(n):
-        o.append(f'<clipPath id="rv{i}"><rect x="{ix-2}" y="{iy}" '
-                 f'width="{IMG_W+4}" height="{IMG_H}"/></clipPath>')
     o.append(f'<linearGradient id="scan" x1="0" y1="0" x2="0" y2="1">'
              f'<stop offset="0" stop-color="{c["accent"]}" stop-opacity="0"/>'
              f'<stop offset="0.5" stop-color="{c["accent"]}" stop-opacity="0.75"/>'
@@ -228,42 +281,42 @@ def build(cfg: dict, frames, theme: str) -> str:
                  f'stroke="{c["dim"]}" stroke-width="1.5"/>')
 
     # one full-resolution stipple per frame, each scanned in then dissolved
+    rev = REVEAL / cycle
     for i, (mask, _count, _lab) in enumerate(frames):
-        _, t0, tr, tf, te = frame_times(i, n)
-        if i == 0:
-            ov, ok = "1;1;0;0", kt([0, tf, te, 1])
-        elif te >= 1.0:
-            ov, ok = "0;0;1;1;0", kt([0, t0 - 1e-4, t0, tf, 1])
-        else:
-            ov, ok = "0;0;1;1;0;0", kt([0, t0 - 1e-4, t0, tf, te, 1])
-        o.append(f'<g clip-path="url(#rv{i})" opacity="{1 if i == 0 else 0}">'
-                 f'<animate attributeName="opacity" values="{ov}" keyTimes="{ok}" '
-                 f'dur="{cycle}s" repeatCount="indefinite"/>')
-        for j, d in enumerate(dots_paths(mask, ix, iy, 1.0)):
+        enter = (i * PER_FRAME) / cycle
+        leave = ((i + 1) * PER_FRAME) / cycle
+        for b, d in enumerate(band_paths(mask, ix, iy, BANDS)):
+            if not d:
+                continue
+            delay = (b / BANDS) * rev
+            ov, ok = cyclic_pulse(enter + delay, leave + delay)
+            # static fallback: if SMIL never runs, frame 0 still shows
+            base = 1 if i == 0 else 0
             o.append(f'<path d="{d}" stroke="{c["dot"]}" stroke-width="1.15" '
-                     f'stroke-linecap="round" fill="none">'
-                     f'<animate attributeName="opacity" values="1;0.68;1" '
-                     f'dur="{3.1 + j * 0.4:.1f}s" begin="{j * 0.9:.1f}s" '
+                     f'stroke-linecap="round" fill="none" opacity="{base}">'
+                     f'<animate attributeName="opacity" values="{ov}" '
+                     f'keyTimes="{ok}" dur="{cycle}s" '
                      f'repeatCount="indefinite"/></path>')
-        o.append("</g>")
 
     # the glow band rides each reveal edge in turn
     for i in range(n):
-        _, t0, tr, tf, te = frame_times(i, n)
-        yv = kt([0, t0, tr, 1]) if i else kt([0, tr, 1])
-        ys = (f"{iy-26};{iy-26};{iy+IMG_H};{iy+IMG_H}" if i
-              else f"{iy-26};{iy+IMG_H};{iy+IMG_H}")
-        o.append(f'<rect x="{ix-2}" y="{iy}" width="{IMG_W+4}" height="26" '
+        _, _hv, _hk, _yv, _yk, _es, _et, exit_s, exit_t = frame_clip(i, n, iy)
+        o.append(f'<rect x="{ix-2}" y="{iy-26}" width="{IMG_W+4}" height="26" '
                  f'fill="url(#scan)" opacity="0">'
-                 f'<animate attributeName="y" values="{ys}" keyTimes="{yv}" '
+                 f'<animate attributeName="y" '
+                 f'values="{iy-26};{iy-26};{iy+IMG_H};{iy-26}" '
+                 f'keyTimes="{kt([0, exit_s, exit_t, 1])}" '
                  f'dur="{cycle}s" repeatCount="indefinite"/>'
                  f'<animate attributeName="opacity" values="0;0;1;0;0" '
-                 f'keyTimes="{kt([0, max(t0-1e-4,0), t0, tr, 1])}" '
+                 f'keyTimes="{kt([0, max(exit_s-0.002, 0), exit_s, exit_t, 1])}" '
                  f'dur="{cycle}s" repeatCount="indefinite"/></rect>')
 
     # footer label swaps with the active frame
     for i, (_m, count, lab) in enumerate(frames):
-        _, t0, tr, tf, te = frame_times(i, n)
+        _c, _hv, _hk, _yv, _yk, _es, enter_t, _xs, exit_t = frame_clip(i, n, iy)
+        t0 = 0.0 if i == 0 else enter_t
+        tf = exit_t
+        te = exit_t
         txt = f"PTS {count} / {lab}"
         o.append(f'<g opacity="{1 if i == 0 else 0}">'
                  f'<animate attributeName="opacity" '
@@ -400,7 +453,7 @@ def main() -> int:
 
     a.out.mkdir(parents=True, exist_ok=True)
     for theme in ("dark", "light"):
-        path = a.out / f"banner-{theme}.v2.svg"
+        path = a.out / f"banner-{theme}.svg"
         path.write_text(build(cfg, frames, theme), encoding="utf-8")
         print(f"  {path}  ({path.stat().st_size/1024:.0f} KB)")
     print(f"\n{len(frames)} frames, {PER_FRAME*len(frames):.0f}s loop.")
