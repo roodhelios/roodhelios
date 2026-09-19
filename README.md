@@ -6,8 +6,9 @@
 <picture>
   <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg?v=5">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg?v=5">
-  <img src="assets/banner-dark.svg?v=5" width="100%" alt="profile.sh --live">
+  <img src="assets/banner-dark.svg?v=1" width="100%" alt="profile.sh --live">
 </picture>
+
 <br/>
 
 <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=22&duration=3200&pause=900&color=4EA8DE&center=true&vCenter=true&width=760&lines=Building+Zero+Trust+authorization+for+AI+agents;Hardening+AWS+at+production+scale;Reverse-engineering+malware+for+fun;Never+trust.+Always+verify." alt="Zero Trust for AI agents / AWS hardening / malware RE" />
