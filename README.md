@@ -4,9 +4,9 @@
      The VISUAL.MAP panel cycles through three full-resolution stipples on a
      27s loop. The versioned filename prevents GitHub from serving stale artwork. -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.v2.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.v2.svg">
-  <img src="assets/banner-dark.v2.svg" width="100%" alt="profile.sh --live">
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg?v=4">
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg?v=4">
+  <img src="assets/banner-dark.svg?v=4" width="100%" alt="profile.sh --live">
 </picture>
 
 <br/>
