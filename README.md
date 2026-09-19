@@ -1,6 +1,12 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0F4C81,100:1B2735&height=180&section=header&text=Aryan%20Singh&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Security%20Engineer%20%7C%20Zero%20Trust%20%C2%B7%20Cloud%20Security%20%C2%B7%20Malware%20RE&descAlignY=57&descSize=16" width="100%" />
+<picture>
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+  <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
+</picture>
+
+<br/>
 
 <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=22&duration=3200&pause=900&color=4EA8DE&center=true&vCenter=true&width=700&lines=Building+Zero+Trust+authorization+for+AI+agents;Hardening+AWS+at+production+scale;Reverse-engineering+malware+for+fun;Never+trust.+Always+verify." alt="Typing SVG" />
 
@@ -29,7 +35,6 @@ Aryan Singh — Security Engineer
 - Spent 15 months as a Security Engineer rebuilding IAM around least privilege across 6 AWS accounts, segmenting VPCs, and hardening Linux/Windows fleets.
 - Now focused on a problem I think is underbuilt: **autonomous AI agents get permanent trust after one login.** That's a terrible security model, so I'm building the alternative.
 - Comfortable on both sides of the line — I write policy engines and I also take apart packed PE32 loaders in FLARE-VM.
-- Published undergrad research on ultrasound image denoising (BM3D + ADMM) with CRC Press / Taylor & Francis.
 
 ---
 
@@ -189,7 +194,5 @@ Correlates explicitly scoped asset observations from multiple sources into stabl
 <div align="center">
 
 **Never trust. Always verify.**
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:1B2735,100:0F4C81&height=100&section=footer" width="100%" />
 
 </div>
