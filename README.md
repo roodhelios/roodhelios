@@ -37,7 +37,6 @@ Aryan Singh — Security Engineer
 - Spent 15 months as a Security Engineer rebuilding IAM around least privilege across 6 AWS accounts, segmenting VPCs, and hardening Linux/Windows fleets.
 - Now focused on a problem I think is underbuilt: **autonomous AI agents get permanent trust after one login.** That's a terrible security model, so I'm building the alternative.
 - Comfortable on both sides of the line — I write policy engines and I also take apart packed PE32 loaders in FLARE-VM.
-- Published undergrad research on ultrasound image denoising (BM3D + ADMM) with CRC Press / Taylor & Francis.
 
 ---
 
